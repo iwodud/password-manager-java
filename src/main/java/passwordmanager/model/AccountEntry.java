@@ -1,4 +1,4 @@
-package passwords.model;
+package passwordmanager.model;
 
 public class AccountEntry {
     private String platform;

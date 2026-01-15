@@ -1,7 +1,7 @@
-package passwords;
+package passwordmanager.ui;
 
-import passwords.logic.PasswordManager;
-import passwords.model.AccountEntry;
+import passwordmanager.logic.PasswordManager;
+import passwordmanager.model.AccountEntry;
 
 public class Main {
     public static void main(String[] args) {

@@ -1,9 +1,9 @@
-package passwords.logic;
+package passwordmanager.logic;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import passwords.model.AccountEntry;
+import passwordmanager.model.AccountEntry;
 
 import java.io.*;
 import java.lang.reflect.Type;
@@ -46,5 +46,9 @@ public class PasswordManager {
         } catch (IOException e) {
             System.err.println("Load error: " + e.getMessage());
         }
+    }
+
+    public void removeEntry(AccountEntry entry) {
+        entries.remove(entry);
     }
 }
