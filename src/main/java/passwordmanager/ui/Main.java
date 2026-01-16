@@ -94,14 +94,45 @@ public class Main extends Application {
         loginField.setPromptText("Login");
 
         PasswordField passwordField = new PasswordField();
+        TextField visiblePasswordField = new TextField();
+        Button togglePasswordButton = new Button("Show");
+
         passwordField.setPromptText("Password");
+        visiblePasswordField.setPromptText("Password");
+        visiblePasswordField.setManaged(false); // ukryj pole z widocznym hasłem na start
+        visiblePasswordField.setVisible(false);
+
+// Gdy klikniesz "Show" — pokaż hasło, ukryj gwiazdki
+        togglePasswordButton.setOnAction(e -> {
+            if (togglePasswordButton.getText().equals("Show")) {
+                visiblePasswordField.setText(passwordField.getText());
+                visiblePasswordField.setVisible(true);
+                visiblePasswordField.setManaged(true);
+                passwordField.setVisible(false);
+                passwordField.setManaged(false);
+                togglePasswordButton.setText("Hide");
+            } else {
+                passwordField.setText(visiblePasswordField.getText());
+                passwordField.setVisible(true);
+                passwordField.setManaged(true);
+                visiblePasswordField.setVisible(false);
+                visiblePasswordField.setManaged(false);
+                togglePasswordButton.setText("Show");
+            }
+        });
+
 
         Button addButton = new Button("Add");
 
         addButton.setOnAction(e -> {
             String platform = platformField.getText();
             String login = loginField.getText();
-            String password = passwordField.getText();
+            String password;
+            if (passwordField.isVisible()) {
+                password = passwordField.getText();
+            } else {
+                password = visiblePasswordField.getText();
+            }
 
             if (!platform.isEmpty() && !login.isEmpty() && !password.isEmpty()) {
                 passwordManager.addEntry(new AccountEntry(platform, login, password));
@@ -115,13 +146,15 @@ public class Main extends Application {
         });
 
         Scene scene = new Scene(layout, 400, 500);
+        HBox passwordBox = new HBox(10, passwordField, visiblePasswordField, togglePasswordButton);
+
         layout.getChildren().addAll(
                 new Label("Saved Accounts:"),
                 listView,
                 new Label("Add New Entry:"),
                 platformField,
                 loginField,
-                passwordField,
+                passwordBox,
                 addButton
         );
 
