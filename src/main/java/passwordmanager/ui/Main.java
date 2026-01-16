@@ -24,8 +24,8 @@ public class Main extends Application {
     private void showLoginScreen(Stage stage) {
         VBox loginLayout = new VBox(10);
         loginLayout.setStyle("-fx-padding: 20; -fx-alignment: center;");
-
         Scene loginScene = new Scene(loginLayout, 300, 180);
+
         stage.setScene(loginScene);
         stage.setTitle("Password Manager - Login");
         stage.show();
@@ -37,19 +37,25 @@ public class Main extends Application {
 
             loginLayout.getChildren().addAll(label, newPasswordField, setButton);
 
-            setButton.setOnAction(e -> {
-                String newPassword = newPasswordField.getText();
-                if (!newPassword.isEmpty()) {
-                    masterPasswordManager.setPassword(newPassword);
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION, "Password set. Please log in.", ButtonType.OK);
-                    alert.showAndWait();
-                    showLoginScreen(stage); // reload login screen
+            setButton.setOnAction(new javafx.event.EventHandler<javafx.event.ActionEvent>() {
+                @Override
+                public void handle(javafx.event.ActionEvent event) {
+                    String newPassword = newPasswordField.getText();
+                    if (!newPassword.isEmpty()) {
+                        masterPasswordManager.setPassword(newPassword);
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Password set. Please log in.", ButtonType.OK);
+                        alert.showAndWait();
+                        showLoginScreen(stage);
+                    }
                 }
             });
 
-            loginScene.setOnKeyPressed(event -> {
-                if (event.getCode() == KeyCode.ENTER) {
-                    setButton.fire();
+            loginScene.setOnKeyPressed(new javafx.event.EventHandler<javafx.scene.input.KeyEvent>() {
+                @Override
+                public void handle(javafx.scene.input.KeyEvent event) {
+                    if (event.getCode() == KeyCode.ENTER) {
+                        setButton.fire();
+                    }
                 }
             });
 
@@ -60,19 +66,25 @@ public class Main extends Application {
 
             loginLayout.getChildren().addAll(label, passwordField, loginButton);
 
-            loginButton.setOnAction(e -> {
-                String inputPassword = passwordField.getText();
-                if (masterPasswordManager.verifyPassword(inputPassword)) {
-                    showMainApp(stage);
-                } else {
-                    Alert alert = new Alert(Alert.AlertType.ERROR, "Invalid master password", ButtonType.OK);
-                    alert.showAndWait();
+            loginButton.setOnAction(new javafx.event.EventHandler<javafx.event.ActionEvent>() {
+                @Override
+                public void handle(javafx.event.ActionEvent event) {
+                    String inputPassword = passwordField.getText();
+                    if (masterPasswordManager.verifyPassword(inputPassword)) {
+                        showMainApp(stage);
+                    } else {
+                        Alert alert = new Alert(Alert.AlertType.ERROR, "Invalid master password", ButtonType.OK);
+                        alert.showAndWait();
+                    }
                 }
             });
 
-            loginScene.setOnKeyPressed(event -> {
-                if (event.getCode() == KeyCode.ENTER) {
-                    loginButton.fire();
+            loginScene.setOnKeyPressed(new javafx.event.EventHandler<javafx.scene.input.KeyEvent>() {
+                @Override
+                public void handle(javafx.scene.input.KeyEvent event) {
+                    if (event.getCode() == KeyCode.ENTER) {
+                        loginButton.fire();
+                    }
                 }
             });
         }
@@ -85,7 +97,8 @@ public class Main extends Application {
         layout.setStyle("-fx-padding: 20;");
 
         ListView<String> listView = new ListView<>();
-        refreshList(listView);
+        final AccountEntry[] selectedEntry = {null};
+        refreshList(listView, selectedEntry);
 
         TextField platformField = new TextField();
         platformField.setPromptText("Platform (e.g. Gmail)");
@@ -99,54 +112,83 @@ public class Main extends Application {
 
         passwordField.setPromptText("Password");
         visiblePasswordField.setPromptText("Password");
-        visiblePasswordField.setManaged(false); // ukryj pole z widocznym hasłem na start
+        visiblePasswordField.setManaged(false);
         visiblePasswordField.setVisible(false);
 
-// Gdy klikniesz "Show" — pokaż hasło, ukryj gwiazdki
-        togglePasswordButton.setOnAction(e -> {
-            if (togglePasswordButton.getText().equals("Show")) {
-                visiblePasswordField.setText(passwordField.getText());
-                visiblePasswordField.setVisible(true);
-                visiblePasswordField.setManaged(true);
-                passwordField.setVisible(false);
-                passwordField.setManaged(false);
-                togglePasswordButton.setText("Hide");
-            } else {
-                passwordField.setText(visiblePasswordField.getText());
-                passwordField.setVisible(true);
-                passwordField.setManaged(true);
-                visiblePasswordField.setVisible(false);
-                visiblePasswordField.setManaged(false);
-                togglePasswordButton.setText("Show");
+        togglePasswordButton.setOnAction(new javafx.event.EventHandler<javafx.event.ActionEvent>() {
+            @Override
+            public void handle(javafx.event.ActionEvent event) {
+                if (togglePasswordButton.getText().equals("Show")) {
+                    visiblePasswordField.setText(passwordField.getText());
+                    visiblePasswordField.setVisible(true);
+                    visiblePasswordField.setManaged(true);
+                    passwordField.setVisible(false);
+                    passwordField.setManaged(false);
+                    togglePasswordButton.setText("Hide");
+                } else {
+                    passwordField.setText(visiblePasswordField.getText());
+                    passwordField.setVisible(true);
+                    passwordField.setManaged(true);
+                    visiblePasswordField.setVisible(false);
+                    visiblePasswordField.setManaged(false);
+                    togglePasswordButton.setText("Show");
+                }
             }
         });
-
 
         Button addButton = new Button("Add");
+        addButton.setOnAction(new javafx.event.EventHandler<javafx.event.ActionEvent>() {
+            @Override
+            public void handle(javafx.event.ActionEvent event) {
+                String platform = platformField.getText();
+                String login = loginField.getText();
+                String password = passwordField.isVisible() ? passwordField.getText() : visiblePasswordField.getText();
 
-        addButton.setOnAction(e -> {
-            String platform = platformField.getText();
-            String login = loginField.getText();
-            String password;
-            if (passwordField.isVisible()) {
-                password = passwordField.getText();
-            } else {
-                password = visiblePasswordField.getText();
-            }
-
-            if (!platform.isEmpty() && !login.isEmpty() && !password.isEmpty()) {
-                passwordManager.addEntry(new AccountEntry(platform, login, password));
-                passwordManager.saveToFile();
-                refreshList(listView);
-
-                platformField.clear();
-                loginField.clear();
-                passwordField.clear();
+                if (!platform.isEmpty() && !login.isEmpty() && !password.isEmpty()) {
+                    passwordManager.addEntry(new AccountEntry(platform, login, password));
+                    passwordManager.saveToFile();
+                    refreshList(listView, selectedEntry);
+                    platformField.clear();
+                    loginField.clear();
+                    passwordField.clear();
+                    visiblePasswordField.clear();
+                }
             }
         });
 
-        Scene scene = new Scene(layout, 400, 500);
-        HBox passwordBox = new HBox(10, passwordField, visiblePasswordField, togglePasswordButton);
+        Button deleteButton = new Button("Delete Selected");
+        deleteButton.setOnAction(new javafx.event.EventHandler<javafx.event.ActionEvent>() {
+            @Override
+            public void handle(javafx.event.ActionEvent event) {
+                if (selectedEntry[0] != null) {
+                    Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+                    confirmAlert.setTitle("Confirm Deletion");
+                    confirmAlert.setHeaderText("Are you sure you want to delete this entry?");
+                    confirmAlert.setContentText(selectedEntry[0].getPlatform() + " - " + selectedEntry[0].getLogin());
+
+                    confirmAlert.showAndWait().ifPresent(new java.util.function.Consumer<ButtonType>() {
+                        @Override
+                        public void accept(ButtonType response) {
+                            if (response == ButtonType.OK) {
+                                passwordManager.removeEntry(selectedEntry[0]);
+                                passwordManager.saveToFile();
+                                refreshList(listView, selectedEntry);
+                            }
+                        }
+                    });
+                }
+            }
+        });
+
+        HBox passwordBox = new HBox(10);
+        passwordField.setPrefWidth(250);
+        visiblePasswordField.setPrefWidth(250);
+        togglePasswordButton.setPrefWidth(60);
+
+        HBox.setHgrow(passwordField, Priority.ALWAYS);
+        HBox.setHgrow(visiblePasswordField, Priority.ALWAYS);
+
+        passwordBox.getChildren().addAll(passwordField, visiblePasswordField, togglePasswordButton);
 
         layout.getChildren().addAll(
                 new Label("Saved Accounts:"),
@@ -155,12 +197,18 @@ public class Main extends Application {
                 platformField,
                 loginField,
                 passwordBox,
-                addButton
+                addButton,
+                deleteButton
         );
 
-        scene.setOnKeyPressed(event -> {
-            if (event.getCode() == KeyCode.ENTER) {
-                addButton.fire();
+        Scene scene = new Scene(layout, 400, 500);
+
+        scene.setOnKeyPressed(new javafx.event.EventHandler<javafx.scene.input.KeyEvent>() {
+            @Override
+            public void handle(javafx.scene.input.KeyEvent event) {
+                if (event.getCode() == KeyCode.ENTER) {
+                    addButton.fire();
+                }
             }
         });
 
@@ -169,12 +217,26 @@ public class Main extends Application {
         stage.show();
     }
 
-    private void refreshList(ListView<String> listView) {
+    private void refreshList(ListView<String> listView, AccountEntry[] selectedEntryRef) {
         listView.getItems().clear();
         List<AccountEntry> entries = passwordManager.getAllEntries();
+
         for (AccountEntry entry : entries) {
-            listView.getItems().add(entry.getPlatform() + " - " + entry.getLogin());
+            String itemText = entry.getPlatform() + " - " + entry.getLogin();
+            listView.getItems().add(itemText);
         }
+
+        listView.getSelectionModel().selectedIndexProperty().addListener(new javafx.beans.value.ChangeListener<Number>() {
+            @Override
+            public void changed(javafx.beans.value.ObservableValue<? extends Number> obs, Number oldVal, Number newVal) {
+                int index = newVal.intValue();
+                if (index >= 0 && index < entries.size()) {
+                    selectedEntryRef[0] = entries.get(index);
+                } else {
+                    selectedEntryRef[0] = null;
+                }
+            }
+        });
     }
 
     public static void main(String[] args) {
