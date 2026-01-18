@@ -4,6 +4,8 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import passwordmanager.logic.PasswordManager;
@@ -13,8 +15,12 @@ import passwordmanager.model.AccountEntry;
 import java.util.List;
 
 public class Main extends Application {
+
     private PasswordManager passwordManager = new PasswordManager();
     private MasterPasswordManager masterPasswordManager = new MasterPasswordManager();
+
+    private Button editButton = new Button("Edit");
+    private Button deleteButton = new Button("Delete");
 
     @Override
     public void start(Stage primaryStage) {
@@ -41,16 +47,13 @@ public class Main extends Application {
                 String newPassword = newPasswordField.getText();
                 if (!newPassword.isEmpty()) {
                     masterPasswordManager.setPassword(newPassword);
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION, "Password set. Please log in.", ButtonType.OK);
-                    alert.showAndWait();
+                    new Alert(Alert.AlertType.INFORMATION, "Password set. Please log in.").showAndWait();
                     showLoginScreen(stage);
                 }
             });
 
-            loginScene.setOnKeyPressed(event -> {
-                if (event.getCode() == KeyCode.ENTER) {
-                    setButton.fire();
-                }
+            loginScene.setOnKeyPressed(e -> {
+                if (e.getCode() == KeyCode.ENTER) setButton.fire();
             });
 
         } else {
@@ -61,19 +64,15 @@ public class Main extends Application {
             loginLayout.getChildren().addAll(label, passwordField, loginButton);
 
             loginButton.setOnAction(e -> {
-                String inputPassword = passwordField.getText();
-                if (masterPasswordManager.verifyPassword(inputPassword)) {
+                if (masterPasswordManager.verifyPassword(passwordField.getText())) {
                     showMainApp(stage);
                 } else {
-                    Alert alert = new Alert(Alert.AlertType.ERROR, "Invalid master password", ButtonType.OK);
-                    alert.showAndWait();
+                    new Alert(Alert.AlertType.ERROR, "Invalid master password").showAndWait();
                 }
             });
 
-            loginScene.setOnKeyPressed(event -> {
-                if (event.getCode() == KeyCode.ENTER) {
-                    loginButton.fire();
-                }
+            loginScene.setOnKeyPressed(e -> {
+                if (e.getCode() == KeyCode.ENTER) loginButton.fire();
             });
         }
     }
@@ -89,60 +88,91 @@ public class Main extends Application {
         final AccountEntry[] selectedEntry = {null};
         final AccountEntry[] editingEntry = {null};
 
-
-        refreshList(listView, selectedEntry);
-
         TextField platformField = new TextField();
-        platformField.setPromptText("Platform (e.g. Gmail)");
+        platformField.setPromptText("Platform");
 
         TextField loginField = new TextField();
         loginField.setPromptText("Login");
 
         PasswordField passwordField = new PasswordField();
-        TextField visiblePasswordField = new TextField();
-        Button togglePasswordButton = new Button("Show");
-
         passwordField.setPromptText("Password");
-        visiblePasswordField.setPromptText("Password");
-        visiblePasswordField.setManaged(false);
-        visiblePasswordField.setVisible(false);
 
-// Gdy klikniesz "Show" — pokaż hasło, ukryj gwiazdki
-        togglePasswordButton.setOnAction(e -> {
-            if (togglePasswordButton.getText().equals("Show")) {
-                visiblePasswordField.setText(passwordField.getText());
-                visiblePasswordField.setVisible(true);
-                visiblePasswordField.setManaged(true);
-                passwordField.setVisible(false);
-                passwordField.setManaged(false);
-                togglePasswordButton.setText("Hide");
-            } else {
-                passwordField.setText(visiblePasswordField.getText());
-                passwordField.setVisible(true);
-                passwordField.setManaged(true);
-                visiblePasswordField.setVisible(false);
-                visiblePasswordField.setManaged(false);
-                togglePasswordButton.setText("Show");
+        TextField visiblePasswordField = new TextField();
+        visiblePasswordField.setPromptText("Password");
+        visiblePasswordField.setVisible(false);
+        visiblePasswordField.setManaged(false);
+
+        visiblePasswordField.setVisible(false);
+        visiblePasswordField.setManaged(false);
+
+        Button togglePasswordButton = new Button("Show");
+        Button addButton = new Button("Add");
+        Button exitButton = new Button("Exit");
+
+        editButton.setDisable(true);
+        deleteButton.setDisable(true);
+
+        listView.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) {
+                int index = listView.getSelectionModel().getSelectedIndex();
+                List<AccountEntry> entries = passwordManager.getAllEntries();
+
+                if (index >= 0 && index < entries.size()) {
+                    AccountEntry entry = entries.get(index);
+
+                    Dialog<Void> dialog = new Dialog<>();
+                    dialog.setTitle("Account Details");
+                    dialog.setHeaderText(entry.getPlatform());
+
+                    Label loginLabel = new Label("Login: " + entry.getLogin());
+                    Label passwordLabel = new Label("Password: " + entry.getPassword());
+
+                    Button copyButton = new Button("Copy Password");
+                    copyButton.setOnAction(ev -> {
+                        ClipboardContent content = new ClipboardContent();
+                        content.putString(entry.getPassword());
+                        Clipboard.getSystemClipboard().setContent(content);
+                        new Alert(Alert.AlertType.INFORMATION, "Password copied").showAndWait();
+                    });
+
+                    VBox box = new VBox(10, loginLabel, passwordLabel, copyButton);
+                    box.setStyle("-fx-padding: 10;");
+
+                    dialog.getDialogPane().setContent(box);
+                    dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+                    dialog.showAndWait();
+                }
             }
         });
 
-        Button addButton = new Button("Add");
+        togglePasswordButton.setOnAction(e -> {
+            boolean show = togglePasswordButton.getText().equals("Show");
+            visiblePasswordField.setText(passwordField.getText());
+            passwordField.setText(visiblePasswordField.getText());
+
+            visiblePasswordField.setVisible(show);
+            visiblePasswordField.setManaged(show);
+            passwordField.setVisible(!show);
+            passwordField.setManaged(!show);
+
+            togglePasswordButton.setText(show ? "Hide" : "Show");
+        });
 
         addButton.setOnAction(e -> {
             String platform = platformField.getText();
             String login = loginField.getText();
-            String password = passwordField.isVisible() ? passwordField.getText() : visiblePasswordField.getText();
+            String password = passwordField.isVisible()
+                    ? passwordField.getText()
+                    : visiblePasswordField.getText();
 
             if (!platform.isEmpty() && !login.isEmpty() && !password.isEmpty()) {
                 if (editingEntry[0] != null) {
-                    // editing mode
                     editingEntry[0].setPlatform(platform);
                     editingEntry[0].setLogin(login);
                     editingEntry[0].setPassword(password);
                     editingEntry[0] = null;
                     addButton.setText("Add");
                 } else {
-                    // adding mode
                     passwordManager.addEntry(new AccountEntry(platform, login, password));
                 }
 
@@ -156,9 +186,6 @@ public class Main extends Application {
             }
         });
 
-
-        Button editButton = new Button("Edit");
-
         editButton.setOnAction(e -> {
             if (selectedEntry[0] != null) {
                 AccountEntry entry = selectedEntry[0];
@@ -171,19 +198,14 @@ public class Main extends Application {
             }
         });
 
-        Button deleteButton = new Button("Delete Selected");
-
         deleteButton.setOnAction(e -> {
             if (selectedEntry[0] != null) {
-                // confirmation window
-                Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
-                confirmAlert.setTitle("Confirm Deletion");
-                confirmAlert.setHeaderText("Are you sure you want to delete this entry?");
-                confirmAlert.setContentText(selectedEntry[0].getPlatform() + " - " + selectedEntry[0].getLogin());
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setHeaderText("Delete entry?");
+                alert.setContentText(selectedEntry[0].getPlatform());
 
-                // waiting for users response
-                confirmAlert.showAndWait().ifPresent(response -> {
-                    if (response == ButtonType.OK) {
+                alert.showAndWait().ifPresent(r -> {
+                    if (r == ButtonType.OK) {
                         passwordManager.removeEntry(selectedEntry[0]);
                         passwordManager.saveToFile();
                         refreshList(listView, selectedEntry);
@@ -192,68 +214,57 @@ public class Main extends Application {
             }
         });
 
+        exitButton.setOnAction(e -> stage.close());
 
-        HBox passwordBox = new HBox(10);
-
-// Szerokość preferowana
-        passwordField.setPrefWidth(250);
-        visiblePasswordField.setPrefWidth(250);
-
-// Rozciąganie pola, by zajęło całą dostępną szerokość w HBox
+        HBox passwordBox = new HBox(10, passwordField, visiblePasswordField, togglePasswordButton);
         HBox.setHgrow(passwordField, Priority.ALWAYS);
         HBox.setHgrow(visiblePasswordField, Priority.ALWAYS);
-
-// Przycisk bez rozciągania (stała szerokość)
         togglePasswordButton.setPrefWidth(60);
 
-// Dodajemy tylko jedno pole widoczne naraz + przycisk
-        passwordBox.getChildren().addAll(passwordField, visiblePasswordField, togglePasswordButton);
-
+        HBox buttonBox = new HBox(10, addButton, editButton, deleteButton, exitButton);
 
         layout.getChildren().addAll(
                 new Label("Saved Accounts:"),
                 listView,
-                new Label("Add New Entry:"),
                 platformField,
                 loginField,
                 passwordBox,
-                addButton,
-                editButton,
-                deleteButton
+                buttonBox
         );
 
         Scene scene = new Scene(layout, 400, 500);
-        scene.setOnKeyPressed(event -> {
-            if (event.getCode() == KeyCode.ENTER) {
-                addButton.fire();
-            }
+        scene.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER) addButton.fire();
         });
 
         stage.setScene(scene);
         stage.setTitle("Password Manager");
         stage.show();
+
+        refreshList(listView, selectedEntry);
     }
 
     private void refreshList(ListView<String> listView, AccountEntry[] selectedEntryRef) {
         listView.getItems().clear();
         List<AccountEntry> entries = passwordManager.getAllEntries();
 
-        for (AccountEntry entry : entries) {
-            String itemText = entry.getPlatform() + " - " + entry.getLogin();
-            listView.getItems().add(itemText);
+        for (AccountEntry e : entries) {
+            listView.getItems().add(e.getPlatform() + " - " + e.getLogin());
         }
 
-        // 🔹 Dodane: Zmieniamy zaznaczony wpis w tablicy, by móc go potem usunąć
-        listView.getSelectionModel().selectedIndexProperty().addListener((obs, oldVal, newVal) -> {
-            int index = newVal.intValue();
-            if (index >= 0 && index < entries.size()) {
-                selectedEntryRef[0] = entries.get(index);
+        listView.getSelectionModel().selectedIndexProperty().addListener((o, oldVal, newVal) -> {
+            int i = newVal.intValue();
+            if (i >= 0 && i < entries.size()) {
+                selectedEntryRef[0] = entries.get(i);
+                editButton.setDisable(false);
+                deleteButton.setDisable(false);
             } else {
                 selectedEntryRef[0] = null;
+                editButton.setDisable(true);
+                deleteButton.setDisable(true);
             }
         });
     }
-
 
     public static void main(String[] args) {
         launch(args);
