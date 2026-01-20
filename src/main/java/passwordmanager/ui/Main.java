@@ -236,22 +236,50 @@ public class Main extends Application {
                     dialog.setHeaderText(clickedEntry.getPlatform());
 
                     Label loginLabel = new Label("Login: " + clickedEntry.getLogin());
-                    String decryptedPassword = CryptoUtils.decrypt(clickedEntry.getPassword(), masterPassword);
-                    Label passwordLabel = new Label("Password: " + decryptedPassword);
 
-                    Button copyButton = new Button("Copy Password");
+                    PasswordField hiddenPasswordField = new PasswordField();
+                    TextField visiblePasswordFieldDialog = new TextField();
+
+                    String decryptedPassword = CryptoUtils.decrypt(clickedEntry.getPassword(), masterPassword);
+                    hiddenPasswordField.setText(decryptedPassword);
+                    visiblePasswordFieldDialog.setText(decryptedPassword);
+
+                    hiddenPasswordField.setEditable(false);
+                    visiblePasswordFieldDialog.setEditable(false);
+                    visiblePasswordFieldDialog.setVisible(false);
+                    visiblePasswordFieldDialog.setManaged(false);
+
+                    Button toggleButton = new Button("Pokaż");
+
+                    toggleButton.setOnAction(e -> {
+                        if (toggleButton.getText().equals("Pokaż")) {
+                            visiblePasswordFieldDialog.setVisible(true);
+                            visiblePasswordFieldDialog.setManaged(true);
+                            hiddenPasswordField.setVisible(false);
+                            hiddenPasswordField.setManaged(false);
+                            toggleButton.setText("Ukryj");
+                        } else {
+                            hiddenPasswordField.setVisible(true);
+                            hiddenPasswordField.setManaged(true);
+                            visiblePasswordFieldDialog.setVisible(false);
+                            visiblePasswordFieldDialog.setManaged(false);
+                            toggleButton.setText("Pokaż");
+                        }
+                    });
+
+                    Button copyButton = new Button("Skopiuj hasło");
                     copyButton.setOnAction(e -> {
                         Clipboard clipboard = Clipboard.getSystemClipboard();
                         ClipboardContent content = new ClipboardContent();
                         content.putString(decryptedPassword);
                         clipboard.setContent(content);
 
-                        Alert copiedAlert = new Alert(Alert.AlertType.INFORMATION, "Password copied to clipboard!", ButtonType.OK);
+                        Alert copiedAlert = new Alert(Alert.AlertType.INFORMATION, "Hasło skopiowane!", ButtonType.OK);
                         copiedAlert.showAndWait();
                     });
 
-                    VBox content = new VBox(10);
-                    content.getChildren().addAll(loginLabel, passwordLabel, copyButton);
+                    HBox passwordBox = new HBox(10, hiddenPasswordField, visiblePasswordFieldDialog, toggleButton);
+                    VBox content = new VBox(10, loginLabel, passwordBox, copyButton);
                     content.setStyle("-fx-padding: 10;");
 
                     dialog.getDialogPane().setContent(content);
