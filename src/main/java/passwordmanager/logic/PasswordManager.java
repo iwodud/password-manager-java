@@ -51,4 +51,14 @@ public class PasswordManager {
     public void removeEntry(AccountEntry entry) {
         entries.remove(entry);
     }
+
+    public void saveToFile(Writer writer) {
+        try {
+            gson.toJson(entries, writer);
+            writer.flush();
+        } catch (IOException e) {
+            System.err.println("Export to writer failed: " + e.getMessage());
+        }
+    }
+
 }

@@ -8,3 +8,4 @@ out/
 master.hash
 passwords.json
 password_export.csv
+password_export_encrypted.json
