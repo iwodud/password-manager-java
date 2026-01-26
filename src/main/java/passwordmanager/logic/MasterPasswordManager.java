@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
+import java.util.regex.Pattern;
 
 public class MasterPasswordManager {
 
@@ -44,5 +45,19 @@ public class MasterPasswordManager {
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 not available");
         }
+    }
+
+    public boolean isStrongPassword(String password) {
+        if (password == null || password.length() < 8) return false;
+
+        Pattern upper = Pattern.compile("[A-Z]");
+        Pattern lower = Pattern.compile("[a-z]");
+        Pattern digit = Pattern.compile("[0-9]");
+        Pattern special = Pattern.compile("[^A-Za-z0-9]");
+
+        return upper.matcher(password).find()
+                && lower.matcher(password).find()
+                && digit.matcher(password).find()
+                && special.matcher(password).find();
     }
 }

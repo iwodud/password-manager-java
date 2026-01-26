@@ -8,6 +8,8 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import java.time.Duration;
+import java.time.Instant;
 import passwordmanager.logic.PasswordManager;
 import passwordmanager.logic.MasterPasswordManager;
 import passwordmanager.logic.CryptoUtils;
@@ -16,6 +18,8 @@ import passwordmanager.model.AccountEntry;
 import java.util.List;
 
 public class Main extends Application {
+    private int failedAttempts = 0;
+    private Instant lastFailedAttempt = null;
     private PasswordManager passwordManager = new PasswordManager();
     private MasterPasswordManager masterPasswordManager = new MasterPasswordManager();
     private String masterPassword;
@@ -67,15 +71,40 @@ public class Main extends Application {
             loginLayout.getChildren().addAll(label, passwordField, loginButton);
 
             loginButton.setOnAction(e -> {
+                if (isLoginBlocked()) {
+                    long remaining = getSecondsToWait() - Duration.between(lastFailedAttempt, Instant.now()).getSeconds();
+                    if (remaining < 0) remaining = 0;
+
+                    Alert alert = new Alert(Alert.AlertType.WARNING,
+                            "Too many failed attempts.\nPlease wait " + formatWaitTime(remaining) + ".", ButtonType.OK);
+                    alert.showAndWait();
+                    return;
+                }
+
                 String inputPassword = passwordField.getText();
                 if (masterPasswordManager.verifyPassword(inputPassword)) {
                     masterPassword = inputPassword;
+                    failedAttempts = 0;
+                    lastFailedAttempt = null;
                     showMainApp(stage);
                 } else {
-                    Alert alert = new Alert(Alert.AlertType.ERROR, "Invalid master password", ButtonType.OK);
-                    alert.showAndWait();
+                    failedAttempts++;
+                    lastFailedAttempt = Instant.now();
+
+                    if (failedAttempts >= 3) {
+                        long waitTime = getSecondsToWait();
+                        Alert alert = new Alert(Alert.AlertType.WARNING,
+                                "Too many failed attempts.\nPlease wait " + formatWaitTime(waitTime) + ".", ButtonType.OK);
+                        alert.showAndWait();
+                    } else {
+                        int remainingAttempts = 3 - failedAttempts;
+                        Alert alert = new Alert(Alert.AlertType.ERROR,
+                                "Invalid master password.\nAttempts left: " + remainingAttempts, ButtonType.OK);
+                        alert.showAndWait();
+                    }
                 }
             });
+
 
             loginScene.setOnKeyPressed(event -> {
                 if (event.getCode() == KeyCode.ENTER) {
@@ -370,6 +399,35 @@ public class Main extends Application {
         }
         return new String(chars);
     }
+
+    private boolean isLoginBlocked() {
+        if (failedAttempts < 3 || lastFailedAttempt == null) return false;
+
+        long secondsSinceLastAttempt = Duration.between(lastFailedAttempt, Instant.now()).getSeconds();
+        long requiredWait = getSecondsToWait();
+
+        return secondsSinceLastAttempt < requiredWait;
+    }
+
+    private long getSecondsToWait() {
+        return switch (failedAttempts) {
+            case 3 -> 30;       // 30 sekund
+            case 4 -> 60;       // 1 minuta
+            case 5 -> 180;      // 3 minuty
+            case 6 -> 300;      // 5 minut
+            case 7 -> 1200;     // 20 minut
+            case 8 -> 3600;     // 1 godzina
+            default -> 86400;   // 1 dzień
+        };
+    }
+
+    private String formatWaitTime(long seconds) {
+        if (seconds >= 86400) return "1 day";
+        if (seconds >= 3600) return (seconds / 3600) + " hour(s)";
+        if (seconds >= 60) return (seconds / 60) + " minute(s)";
+        return seconds + " second(s)";
+    }
+
 
     public static void main(String[] args) {
         launch(args);
