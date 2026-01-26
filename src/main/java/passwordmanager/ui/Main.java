@@ -150,13 +150,21 @@ public class Main extends Application {
         deleteButton.setDisable(true);
 
         togglePasswordButton.setOnAction(e -> {
-            boolean show = togglePasswordButton.getText().equals("Show");
-            visiblePasswordField.setText(passwordField.getText());
-            visiblePasswordField.setVisible(show);
-            visiblePasswordField.setManaged(show);
-            passwordField.setVisible(!show);
-            passwordField.setManaged(!show);
-            togglePasswordButton.setText(show ? "Hide" : "Show");
+            if (togglePasswordButton.getText().equals("Show")) {
+                visiblePasswordField.setText(passwordField.getText());
+                visiblePasswordField.setVisible(true);
+                visiblePasswordField.setManaged(true);
+                passwordField.setVisible(false);
+                passwordField.setManaged(false);
+                togglePasswordButton.setText("Hide");
+            } else {
+                passwordField.setText(visiblePasswordField.getText());
+                passwordField.setVisible(true);
+                passwordField.setManaged(true);
+                visiblePasswordField.setVisible(false);
+                visiblePasswordField.setManaged(false);
+                togglePasswordButton.setText("Show");
+            }
         });
 
         generatePasswordButton.setOnAction(e -> {
@@ -229,6 +237,7 @@ public class Main extends Application {
 
         exitButton.setOnAction(e -> stage.close());
 
+        // 🔽 TU JEST NOWA OBSŁUGA EXPORTU: dialog z wyborem formatu
         exportButton.setOnAction(e -> {
             ChoiceDialog<String> dialog = new ChoiceDialog<>("Plaintext CSV", "Plaintext CSV", "Encrypted JSON");
             dialog.setTitle("Export Format");
@@ -258,6 +267,73 @@ public class Main extends Application {
                 selectedEntry[0] = null;
                 editButton.setDisable(true);
                 deleteButton.setDisable(true);
+            }
+        });
+
+        listView.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                int selectedIndex = listView.getSelectionModel().getSelectedIndex();
+                List<AccountEntry> entries = passwordManager.getAllEntries();
+
+                if (selectedIndex >= 0 && selectedIndex < entries.size()) {
+                    AccountEntry clickedEntry = entries.get(selectedIndex);
+
+                    Dialog<Void> dialog = new Dialog<>();
+                    dialog.setTitle("Account Details");
+                    dialog.setHeaderText(clickedEntry.getPlatform());
+
+                    Label loginLabel = new Label("Login: " + clickedEntry.getLogin());
+
+                    PasswordField hiddenPasswordField = new PasswordField();
+                    TextField visiblePasswordFieldDialog = new TextField();
+
+                    String decryptedPassword = CryptoUtils.decrypt(clickedEntry.getPassword(), masterPassword);
+                    hiddenPasswordField.setText(decryptedPassword);
+                    visiblePasswordFieldDialog.setText(decryptedPassword);
+
+                    hiddenPasswordField.setEditable(false);
+                    visiblePasswordFieldDialog.setEditable(false);
+                    visiblePasswordFieldDialog.setVisible(false);
+                    visiblePasswordFieldDialog.setManaged(false);
+
+                    Button toggleButton = new Button("Pokaż");
+
+                    toggleButton.setOnAction(e -> {
+                        if (toggleButton.getText().equals("Pokaż")) {
+                            visiblePasswordFieldDialog.setVisible(true);
+                            visiblePasswordFieldDialog.setManaged(true);
+                            hiddenPasswordField.setVisible(false);
+                            hiddenPasswordField.setManaged(false);
+                            toggleButton.setText("Ukryj");
+                        } else {
+                            hiddenPasswordField.setVisible(true);
+                            hiddenPasswordField.setManaged(true);
+                            visiblePasswordFieldDialog.setVisible(false);
+                            visiblePasswordFieldDialog.setManaged(false);
+                            toggleButton.setText("Pokaż");
+                        }
+                    });
+
+                    Button copyButton = new Button("Skopiuj hasło");
+                    copyButton.setOnAction(e -> {
+                        Clipboard clipboard = Clipboard.getSystemClipboard();
+                        ClipboardContent content = new ClipboardContent();
+                        content.putString(decryptedPassword);
+                        clipboard.setContent(content);
+
+                        Alert copiedAlert = new Alert(Alert.AlertType.INFORMATION, "Hasło skopiowane!", ButtonType.OK);
+                        copiedAlert.showAndWait();
+                    });
+
+                    HBox passwordBoxDialog = new HBox(10, hiddenPasswordField, visiblePasswordFieldDialog, toggleButton);
+                    VBox content = new VBox(10, loginLabel, passwordBoxDialog, copyButton);
+                    content.setStyle("-fx-padding: 10;");
+
+                    dialog.getDialogPane().setContent(content);
+                    dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+
+                    dialog.showAndWait();
+                }
             }
         });
 
@@ -300,7 +376,7 @@ public class Main extends Application {
         stage.setTitle("Password Manager");
         stage.show();
     }
-
+    
     private void exportToCSV() {
         try (FileWriter writer = new FileWriter("password_export.csv")) {
             writer.write("Platform,Login,Password\n");
@@ -310,10 +386,12 @@ public class Main extends Application {
                 String decryptedPassword = CryptoUtils.decrypt(entry.getPassword(), masterPassword);
                 writer.write(platform + "," + login + "," + decryptedPassword + "\n");
             }
-            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Plaintext export completed.\nFile: password_export.csv", ButtonType.OK);
+            Alert alert = new Alert(Alert.AlertType.INFORMATION,
+                    "Plaintext export completed.\nFile: password_export.csv", ButtonType.OK);
             alert.showAndWait();
         } catch (IOException ex) {
-            Alert errorAlert = new Alert(Alert.AlertType.ERROR, "Export failed: " + ex.getMessage(), ButtonType.OK);
+            Alert errorAlert = new Alert(Alert.AlertType.ERROR,
+                    "Export failed: " + ex.getMessage(), ButtonType.OK);
             errorAlert.showAndWait();
         }
     }
@@ -321,10 +399,12 @@ public class Main extends Application {
     private void exportToEncryptedJSON() {
         try (FileWriter writer = new FileWriter("password_export_encrypted.json")) {
             passwordManager.saveToFile(writer);
-            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Encrypted export completed.\nFile: password_export_encrypted.json", ButtonType.OK);
+            Alert alert = new Alert(Alert.AlertType.INFORMATION,
+                    "Encrypted export completed.\nFile: password_export_encrypted.json", ButtonType.OK);
             alert.showAndWait();
         } catch (IOException ex) {
-            Alert errorAlert = new Alert(Alert.AlertType.ERROR, "Export failed: " + ex.getMessage(), ButtonType.OK);
+            Alert errorAlert = new Alert(Alert.AlertType.ERROR,
+                    "Export failed: " + ex.getMessage(), ButtonType.OK);
             errorAlert.showAndWait();
         }
     }
@@ -332,6 +412,7 @@ public class Main extends Application {
     private void refreshList(ListView<String> listView) {
         listView.getItems().clear();
         List<AccountEntry> entries = passwordManager.getAllEntries();
+
         for (AccountEntry entry : entries) {
             String itemText = entry.getPlatform() + " - " + entry.getLogin();
             listView.getItems().add(itemText);
@@ -371,20 +452,22 @@ public class Main extends Application {
 
     private boolean isLoginBlocked() {
         if (failedAttempts < 3 || lastFailedAttempt == null) return false;
+
         long secondsSinceLastAttempt = Duration.between(lastFailedAttempt, Instant.now()).getSeconds();
         long requiredWait = getSecondsToWait();
+
         return secondsSinceLastAttempt < requiredWait;
     }
 
     private long getSecondsToWait() {
         return switch (failedAttempts) {
-            case 3 -> 30;
-            case 4 -> 60;
-            case 5 -> 180;
-            case 6 -> 300;
-            case 7 -> 1200;
-            case 8 -> 3600;
-            default -> 86400;
+            case 3 -> 30;       // 30 sekund
+            case 4 -> 60;       // 1 minuta
+            case 5 -> 180;      // 3 minuty
+            case 6 -> 300;      // 5 minut
+            case 7 -> 1200;     // 20 minut
+            case 8 -> 3600;     // 1 godzina
+            default -> 86400;   // 1 dzień
         };
     }
 
