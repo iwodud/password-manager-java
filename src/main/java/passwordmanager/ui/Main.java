@@ -16,10 +16,10 @@ import passwordmanager.logic.PasswordManager;
 import passwordmanager.logic.MasterPasswordManager;
 import passwordmanager.logic.CryptoUtils;
 import passwordmanager.model.AccountEntry;
-
 import java.util.List;
 
 public class Main extends Application {
+
     private int failedAttempts = 0;
     private Instant lastFailedAttempt = null;
     private PasswordManager passwordManager = new PasswordManager();
@@ -32,6 +32,7 @@ public class Main extends Application {
     }
 
     private void showLoginScreen(Stage stage) {
+
         VBox loginLayout = new VBox(10);
         loginLayout.setStyle("-fx-padding: 20; -fx-alignment: center;");
 
@@ -54,16 +55,13 @@ public class Main extends Application {
             loginLayout.getChildren().addAll(label, newPasswordField, strengthLabel, setButton);
 
             newPasswordField.textProperty().addListener((obs, oldVal, newVal) -> {
-
                 if (newVal.length() < 6) {
                     strengthLabel.setText("Password strength: VERY WEAK");
                     strengthLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
-                }
-                else if (!masterPasswordManager.isStrongPassword(newVal)) {
+                } else if (!masterPasswordManager.isStrongPassword(newVal)) {
                     strengthLabel.setText("Password strength: MEDIUM");
                     strengthLabel.setStyle("-fx-text-fill: orange; -fx-font-weight: bold;");
-                }
-                else {
+                } else {
                     strengthLabel.setText("Password strength: STRONG");
                     strengthLabel.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
                 }
@@ -96,9 +94,7 @@ public class Main extends Application {
                 }
             });
 
-        }
-
-        else {
+        } else {
 
             Label label = new Label("Enter master password:");
             PasswordField passwordField = new PasswordField();
@@ -108,6 +104,7 @@ public class Main extends Application {
             loginLayout.getChildren().addAll(label, passwordField, loginButton);
 
             loginButton.setOnAction(e -> {
+
                 if (isLoginBlocked()) {
                     long remaining = getSecondsToWait() - Duration.between(lastFailedAttempt, Instant.now()).getSeconds();
                     if (remaining < 0) remaining = 0;
@@ -157,10 +154,14 @@ public class Main extends Application {
 
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Password");
+
         TextField visiblePasswordField = new TextField();
         visiblePasswordField.setPromptText("Password");
         visiblePasswordField.setManaged(false);
         visiblePasswordField.setVisible(false);
+
+        Label passwordStrengthLabel = new Label("Password strength: ");
+        passwordStrengthLabel.setStyle("-fx-font-weight: bold;");
 
         Button togglePasswordButton = new Button("Show");
         Button generatePasswordButton = new Button("Generate Password");
@@ -172,6 +173,40 @@ public class Main extends Application {
 
         editButton.setDisable(true);
         deleteButton.setDisable(true);
+
+        HBox passwordBox = new HBox(10);
+        HBox.setHgrow(passwordField, Priority.ALWAYS);
+        HBox.setHgrow(visiblePasswordField, Priority.ALWAYS);
+        passwordField.setMaxWidth(Double.MAX_VALUE);
+        visiblePasswordField.setMaxWidth(Double.MAX_VALUE);
+        togglePasswordButton.setPrefWidth(70);
+        passwordBox.getChildren().addAll(passwordField, visiblePasswordField, togglePasswordButton);
+
+        Runnable updateStrength = () -> {
+            String pass = passwordField.isVisible() ? passwordField.getText() : visiblePasswordField.getText();
+
+            if (pass.isEmpty()) {
+                passwordStrengthLabel.setText("Password strength: ");
+                passwordStrengthLabel.setStyle("-fx-text-fill: black; -fx-font-weight: bold;");
+                return;
+            }
+
+            int score = evaluatePasswordStrength(pass);
+
+            if (score <= 2) {
+                passwordStrengthLabel.setText("Password strength: WEAK");
+                passwordStrengthLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+            } else if (score <= 4) {
+                passwordStrengthLabel.setText("Password strength: MEDIUM");
+                passwordStrengthLabel.setStyle("-fx-text-fill: orange; -fx-font-weight: bold;");
+            } else {
+                passwordStrengthLabel.setText("Password strength: STRONG");
+                passwordStrengthLabel.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
+            }
+        };
+
+        passwordField.textProperty().addListener((obs, o, n) -> updateStrength.run());
+        visiblePasswordField.textProperty().addListener((obs, o, n) -> updateStrength.run());
 
         togglePasswordButton.setOnAction(e -> {
             if (togglePasswordButton.getText().equals("Show")) {
@@ -195,6 +230,7 @@ public class Main extends Application {
             String generated = generateStrongPassword(12);
             passwordField.setText(generated);
             visiblePasswordField.setText(generated);
+            updateStrength.run();
         });
 
         addButton.setOnAction(e -> {
@@ -223,6 +259,7 @@ public class Main extends Application {
                 loginField.clear();
                 passwordField.clear();
                 visiblePasswordField.clear();
+                passwordStrengthLabel.setText("Password strength: ");
                 editButton.setDisable(true);
                 deleteButton.setDisable(true);
             }
@@ -233,9 +270,10 @@ public class Main extends Application {
                 AccountEntry entry = selectedEntry[0];
                 platformField.setText(entry.getPlatform());
                 loginField.setText(entry.getLogin());
-                String decryptedPassword = CryptoUtils.decrypt(entry.getPassword(), masterPassword);
-                passwordField.setText(decryptedPassword);
-                visiblePasswordField.setText(decryptedPassword);
+                String decrypted = CryptoUtils.decrypt(entry.getPassword(), masterPassword);
+                passwordField.setText(decrypted);
+                visiblePasswordField.setText(decrypted);
+                updateStrength.run();
                 editingEntry[0] = entry;
                 addButton.setText("Save");
             }
@@ -269,7 +307,6 @@ public class Main extends Application {
         listView.getSelectionModel().selectedIndexProperty().addListener((obs, oldVal, newVal) -> {
             int index = newVal.intValue();
             List<AccountEntry> entries = passwordManager.getAllEntries();
-
             if (index >= 0 && index < entries.size()) {
                 selectedEntry[0] = entries.get(index);
                 editButton.setDisable(false);
@@ -279,20 +316,16 @@ public class Main extends Application {
 
         listView.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
-
                 int index = listView.getSelectionModel().getSelectedIndex();
                 List<AccountEntry> entries = passwordManager.getAllEntries();
 
                 if (index >= 0 && index < entries.size()) {
-
                     AccountEntry entry = entries.get(index);
-
                     Dialog<Void> dialog = new Dialog<>();
                     dialog.setTitle("Account Details");
                     dialog.setHeaderText(entry.getPlatform());
 
                     Label loginLabel = new Label("Login: " + entry.getLogin());
-
                     PasswordField hidden = new PasswordField();
                     TextField visible = new TextField();
 
@@ -300,10 +333,8 @@ public class Main extends Application {
 
                     hidden.setText(decrypted);
                     visible.setText(decrypted);
-
                     hidden.setEditable(false);
                     visible.setEditable(false);
-
                     visible.setVisible(false);
                     visible.setManaged(false);
 
@@ -343,21 +374,18 @@ public class Main extends Application {
             }
         });
 
-        HBox passwordBox = new HBox(10);
-
-        HBox.setHgrow(passwordField, Priority.ALWAYS);
-        HBox.setHgrow(visiblePasswordField, Priority.ALWAYS);
-
-        passwordField.setMaxWidth(Double.MAX_VALUE);
-        visiblePasswordField.setMaxWidth(Double.MAX_VALUE);
-
-        passwordBox.getChildren().addAll(passwordField, visiblePasswordField, togglePasswordButton);
-
-
+        // --- KLUCZOWA ZMIANA UKŁADU ---
+        // Przyciski akcji po lewej stronie
         HBox leftButtons = new HBox(10, addButton, editButton, deleteButton, generatePasswordButton, exportButton);
-        HBox rightButtons = new HBox(exitButton);
-        HBox fullRow = new HBox(10, leftButtons, rightButtons);
-        HBox.setHgrow(rightButtons, Priority.ALWAYS);
+
+        // Spacer, który zajmie całą dostępną wolną przestrzeń
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        // Główny kontener wiersza na dole
+        HBox fullRow = new HBox(10);
+        fullRow.getChildren().addAll(leftButtons, spacer, exitButton);
+        // ------------------------------
 
         layout.getChildren().addAll(
                 new Label("Saved Accounts:"),
@@ -366,19 +394,23 @@ public class Main extends Application {
                 platformField,
                 loginField,
                 passwordBox,
+                passwordStrengthLabel,
                 fullRow
         );
 
-        Scene scene = new Scene(layout, 500, 500);
-        scene.setOnKeyPressed(event -> {
-            if (event.getCode() == KeyCode.ENTER) {
-                addButton.fire();
-            }
-        });
-
-        stage.setScene(scene);
+        stage.setScene(new Scene(layout, 500, 520));
         stage.setTitle("Password Manager");
         stage.show();
+    }
+
+    private int evaluatePasswordStrength(String password) {
+        int score = 0;
+        if (password.length() >= 8) score++;
+        if (password.matches(".*[A-Z].*")) score++;
+        if (password.matches(".*[a-z].*")) score++;
+        if (password.matches(".*[0-9].*")) score++;
+        if (password.matches(".*[^A-Za-z0-9].*")) score++;
+        return score;
     }
 
     private void exportToCSV() {
