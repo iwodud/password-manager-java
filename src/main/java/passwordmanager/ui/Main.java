@@ -136,7 +136,6 @@ public class Main extends Application {
     }
 
     private void showMainApp(Stage stage) {
-
         passwordManager.loadFromFile();
 
         VBox layout = new VBox(10);
@@ -184,24 +183,21 @@ public class Main extends Application {
 
         Runnable updateStrength = () -> {
             String pass = passwordField.isVisible() ? passwordField.getText() : visiblePasswordField.getText();
-
             if (pass.isEmpty()) {
                 passwordStrengthLabel.setText("Password strength: ");
-                passwordStrengthLabel.setStyle("-fx-text-fill: black; -fx-font-weight: bold;");
+                passwordStrengthLabel.setStyle("-fx-text-fill: #bbbbbb; -fx-font-weight: bold;");
                 return;
             }
-
             int score = evaluatePasswordStrength(pass);
-
             if (score <= 2) {
                 passwordStrengthLabel.setText("Password strength: WEAK");
-                passwordStrengthLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+                passwordStrengthLabel.setStyle("-fx-text-fill: #ff6666; -fx-font-weight: bold;");
             } else if (score <= 4) {
                 passwordStrengthLabel.setText("Password strength: MEDIUM");
-                passwordStrengthLabel.setStyle("-fx-text-fill: orange; -fx-font-weight: bold;");
+                passwordStrengthLabel.setStyle("-fx-text-fill: #ffaa00; -fx-font-weight: bold;");
             } else {
                 passwordStrengthLabel.setText("Password strength: STRONG");
-                passwordStrengthLabel.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
+                passwordStrengthLabel.setStyle("-fx-text-fill: #66ff66; -fx-font-weight: bold;");
             }
         };
 
@@ -239,9 +235,7 @@ public class Main extends Application {
             String password = passwordField.isVisible() ? passwordField.getText() : visiblePasswordField.getText();
 
             if (!platform.isEmpty() && !login.isEmpty() && !password.isEmpty()) {
-
                 String encryptedPassword = CryptoUtils.encrypt(password, masterPassword);
-
                 if (editingEntry[0] != null) {
                     editingEntry[0].setPlatform(platform);
                     editingEntry[0].setLogin(login);
@@ -251,10 +245,8 @@ public class Main extends Application {
                 } else {
                     passwordManager.addEntry(new AccountEntry(platform, login, encryptedPassword));
                 }
-
                 passwordManager.saveToFile();
                 refreshList(listView);
-
                 platformField.clear();
                 loginField.clear();
                 passwordField.clear();
@@ -295,7 +287,6 @@ public class Main extends Application {
             ChoiceDialog<String> dialog = new ChoiceDialog<>("Plaintext CSV", "Plaintext CSV", "Encrypted JSON");
             dialog.setTitle("Export Format");
             dialog.setHeaderText("Choose export format");
-
             dialog.showAndWait().ifPresent(choice -> {
                 if (choice.equals("Plaintext CSV")) exportToCSV();
                 else exportToEncryptedJSON();
@@ -318,7 +309,6 @@ public class Main extends Application {
             if (event.getClickCount() == 2) {
                 int index = listView.getSelectionModel().getSelectedIndex();
                 List<AccountEntry> entries = passwordManager.getAllEntries();
-
                 if (index >= 0 && index < entries.size()) {
                     AccountEntry entry = entries.get(index);
                     Dialog<Void> dialog = new Dialog<>();
@@ -328,7 +318,6 @@ public class Main extends Application {
                     Label loginLabel = new Label("Login: " + entry.getLogin());
                     PasswordField hidden = new PasswordField();
                     TextField visible = new TextField();
-
                     String decrypted = CryptoUtils.decrypt(entry.getPassword(), masterPassword);
 
                     hidden.setText(decrypted);
@@ -366,26 +355,21 @@ public class Main extends Application {
 
                     HBox box = new HBox(10, hidden, visible, toggle);
                     VBox content = new VBox(10, loginLabel, box, copy);
-
                     dialog.getDialogPane().setContent(content);
                     dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+
+                    dialog.getDialogPane().getStylesheets().add("data:text/css," +
+                            ".root { -fx-base: #2b2b2b; } .label { -fx-text-fill: white; }");
+
                     dialog.showAndWait();
                 }
             }
         });
 
-        // --- KLUCZOWA ZMIANA UKŁADU ---
-        // Przyciski akcji po lewej stronie
         HBox leftButtons = new HBox(10, addButton, editButton, deleteButton, generatePasswordButton, exportButton);
-
-        // Spacer, który zajmie całą dostępną wolną przestrzeń
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        // Główny kontener wiersza na dole
-        HBox fullRow = new HBox(10);
-        fullRow.getChildren().addAll(leftButtons, spacer, exitButton);
-        // ------------------------------
+        HBox fullRow = new HBox(10, leftButtons, spacer, exitButton);
 
         layout.getChildren().addAll(
                 new Label("Saved Accounts:"),
@@ -398,7 +382,17 @@ public class Main extends Application {
                 fullRow
         );
 
-        stage.setScene(new Scene(layout, 500, 520));
+        Scene scene = new Scene(layout, 650, 550);
+
+        scene.getStylesheets().add("data:text/css," +
+                ".root { -fx-base: #2b2b2b; -fx-background: #2b2b2b; }" +
+                ".label { -fx-text-fill: #bbbbbb; }" +
+                ".list-view { -fx-control-inner-background: #3c3f41; }" +
+                ".text-field, .password-field { -fx-text-fill: white; -fx-background-color: #45494a; }" +
+                ".button { -fx-base: #4e5052; }"
+        );
+
+        stage.setScene(scene);
         stage.setTitle("Password Manager");
         stage.show();
     }
