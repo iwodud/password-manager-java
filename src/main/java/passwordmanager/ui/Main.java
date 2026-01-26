@@ -10,6 +10,8 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import java.time.Duration;
 import java.time.Instant;
+import java.io.FileWriter;
+import java.io.IOException;
 import passwordmanager.logic.PasswordManager;
 import passwordmanager.logic.MasterPasswordManager;
 import passwordmanager.logic.CryptoUtils;
@@ -143,6 +145,7 @@ public class Main extends Application {
         Button editButton = new Button("Edit");
         Button deleteButton = new Button("Delete");
         Button exitButton = new Button("Exit");
+        Button exportButton = new Button("Export");
 
         editButton.setDisable(true);
         deleteButton.setDisable(true);
@@ -234,6 +237,27 @@ public class Main extends Application {
         });
 
         exitButton.setOnAction(e -> stage.close());
+
+        exportButton.setOnAction(e -> {
+            try (FileWriter writer = new FileWriter("password_export.csv")) {
+                writer.write("Platform,Login,Password\n");
+
+                for (AccountEntry entry : passwordManager.getAllEntries()) {
+                    String platform = entry.getPlatform();
+                    String login = entry.getLogin();
+                    String decryptedPassword = CryptoUtils.decrypt(entry.getPassword(), masterPassword);
+                    writer.write(platform + "," + login + "," + decryptedPassword + "\n");
+                }
+
+                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Export completed successfully.\nFile: password_export.csv", ButtonType.OK);
+                alert.showAndWait();
+
+            } catch (IOException ex) {
+                Alert errorAlert = new Alert(Alert.AlertType.ERROR, "Export failed: " + ex.getMessage(), ButtonType.OK);
+                errorAlert.showAndWait();
+            }
+        });
+
 
         refreshList(listView);
 
@@ -329,7 +353,7 @@ public class Main extends Application {
 
         passwordBox.getChildren().addAll(passwordField, visiblePasswordField, togglePasswordButton);
 
-        HBox leftButtonBox = new HBox(10, addButton, editButton, deleteButton, generatePasswordButton);
+        HBox leftButtonBox = new HBox(10, addButton, editButton, deleteButton, generatePasswordButton,exportButton);
         HBox rightButtonBox = new HBox(exitButton);
         rightButtonBox.setStyle("-fx-alignment: center-right;");
 
